@@ -2,8 +2,7 @@ bl_info = {
     "name": "PES/WE/JL PC/PS2/PSP and PES2013 PC Face/Hair Modifier Tool",
     "author": "PES Indie Team / Suat CAGDAS  'sxsxsx'",
     "version": (2,0),
-    "blender": (2, 6, 7),
-    "api": 35853,
+    "blender": (2, 80, 0),
     "location": "Under Scene Tab",
     "description": "Import/Export PES/WE/JL PC/PS2/PSP and PES13 PC Face/Hair Model",
     "warning": "",
@@ -11,7 +10,12 @@ bl_info = {
     "tracker_url": "",
     "category": "System"}
 
-import bpy,bmesh,zlib,os,struct,io
+import bpy
+import bmesh
+import os
+import struct
+import io
+import compression_utils
 from array import array
 from bpy.props import *
 import logging
@@ -62,63 +66,35 @@ class VertexGroup():
         self.total_faces = total_faces
 
 def unzlib(model):
-    logging.debug("Starting unzlib")
+    """Wrapper to decompress selected model using compression_utils."""
     if model == 'face':
-        filepath_imp=facepath
-        temp=face_temp
+        filepath_imp = facepath
+        temp = face_temp
     else:
-        filepath_imp=hairpath
-        temp=hair_temp
-        
-    data1 = open(filepath_imp, 'rb')
-    data1.seek(16,0)
-    if bpy.context.scene.pes_ver == "pes_pc" or bpy.context.scene.pes_ver == "pes_ps2" or bpy.context.scene.pes_ver == "pes_psp":
-        data1.seek(16,1)  
-    data2=data1.read()
-    data3=zlib.decompress(data2,32)
-    out=open(temp,"wb")
-    out.write(data3)
-    out.flush()
-    out.close()
+        filepath_imp = hairpath
+        temp = hair_temp
 
-    logging.debug("Finishing unzlib")
+    return compression_utils.unzlib(
+        filepath_imp,
+        temp,
+        bpy.context.scene.pes_ver,
+    )
 
-    return open(temp,"rb")
-
-def zlib_comp(self,model):
-    logging.debug("Starting zlib")
-
+def zlib_comp(self, model):
+    """Wrapper to compress selected model using compression_utils."""
     if model == 'face':
-        filepath_exp=facepath
-        temp=face_temp
+        filepath_exp = facepath
+        temp = face_temp
     else:
-        filepath_exp=hairpath
-        temp=hair_temp
-    
-    exp1=open(temp, 'rb').read()
-    exp2=zlib.compress(exp1,9)
-    s1,s2=len(exp1),len(exp2)
-    exp=open(filepath_exp,"wb")
-    if bpy.context.scene.pes_ver == 'pes13':
-        exp.write(struct.pack("I",0x57010100))
-        exp.write(struct.pack("4s","ESYS".encode()))
-    else:
-        exp.write(struct.pack("I",0x00010600))
-    exp.write(struct.pack("I",s2))
-    exp.write(struct.pack("I",s1))
-    if bpy.context.scene.pes_ver == "pes_pc" or bpy.context.scene.pes_ver == "pes_ps2" or bpy.context.scene.pes_ver == "pes_psp":
-        exp.write(struct.pack("20s","".encode()))
-    exp.write(exp2)
-    copyright = "Made by Suat CAGDAS 'sxsxsx'"
-    if bpy.context.scene.pes_ver == "pes_pc" or bpy.context.scene.pes_ver == "pes_ps2" or bpy.context.scene.pes_ver == "pes_psp":
-        exp.write(struct.pack("16s","".encode()))
-        copyright = "Made by PES Indie Team"
-    exp.write(struct.pack("I%dsI%ds" % (len(tool_id), len(copyright)),0,
-                              tool_id.encode(),
-                              0,copyright.encode()))
-    exp.flush()
-    exp.close()
-    logging.debug("Finishing zlib")
+        filepath_exp = hairpath
+        temp = hair_temp
+
+    compression_utils.zlib_comp(
+        temp,
+        filepath_exp,
+        bpy.context.scene.pes_ver,
+        tool_id,
+    )
 
 def pes_psp_exp(self,model):
     
@@ -1826,13 +1802,19 @@ class Face_Modifier_OP(bpy.types.Operator):
             bpy.context.scene.hair_path=bpy.context.scene.ks_path+hair_id
             return {'FINISHED'}
 
+
+classes = (
+    Face_Modifier_PA,
+    Face_Modifier_OP,
+)
+
 def register():
-    bpy.utils.register_module(__name__)
-    pass
+    for cls in classes:
+        bpy.utils.register_class(cls)
 
 def unregister():
-    bpy.utils.unregister_module(__name__)
-    pass
+    for cls in reversed(classes):
+        bpy.utils.unregister_class(cls)
 
 if __name__ == "__main__":
     register()
