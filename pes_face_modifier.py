@@ -16,6 +16,7 @@ import os
 import struct
 import io
 import compression_utils
+import versions
 from array import array
 from bpy.props import *
 import logging
@@ -77,7 +78,7 @@ def unzlib(model):
     return compression_utils.unzlib(
         filepath_imp,
         temp,
-        bpy.context.scene.pes_ver,
+        versions.PES_VERSIONS[bpy.context.scene.pes_ver],
     )
 
 def zlib_comp(self, model):
@@ -92,7 +93,7 @@ def zlib_comp(self, model):
     compression_utils.zlib_comp(
         temp,
         filepath_exp,
-        bpy.context.scene.pes_ver,
+        versions.PES_VERSIONS[bpy.context.scene.pes_ver],
         tool_id,
     )
 
